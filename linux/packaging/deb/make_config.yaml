@@ -1,0 +1,24 @@
+app_name: audio_stream_poc
+executable_name: audio_stream_poc
+binary_name: audio_stream_poc
+
+package_name: audio-stream-poc
+version: "1.0.0"
+revision: "1"
+
+maintainer: "Your Name <you@example.com>"
+description: "Audio streaming application"
+license: "MIT"
+
+architecture: "amd64"
+section: "sound"
+priority: "optional"
+
+homepage: "https://example.com"
+
+installed_size: "auto"
+
+depends:
+  - libgtk-3-0
+  - libstdc++6
+  - libglib2.0-0

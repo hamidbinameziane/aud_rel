@@ -1,0 +1,21 @@
+output: dist/
+
+releases:
+  - name: dev
+    package_identifier: com.example.audiostream
+    package_name: audio_stream_app
+    package_version: 1.0.0
+    package_build_number: 1
+
+    description: Audio streaming application
+    maintainer: Your Name <you@example.com>
+    vendor: Your Company
+    license: MIT
+    homepage: https://example.com
+    executable_name: audio_stream_app
+
+    jobs:
+      - name: release
+        package:
+          platform: linux
+          target: deb
