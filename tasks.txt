@@ -1,0 +1,6 @@
+Task: Configure and generate Flutter launcher icons.
+Icon path: assets/icon/icon.png
+Requirements:
+- Add the 'flutter_launcher_icons' dependency to pubspec.yaml.
+- Configure the 'flutter_launcher_icons' section (android/ios enabled).
+- execute the terminal command to generate the icons.

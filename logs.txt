@@ -1,0 +1,6 @@
+
+D/libMEOW (  776): applied 0 plugin for [com.example.audio_stream_poc].
+I/flutter (  776): [IMPORTANT:flutter/shell/platform/android/android_context_gl_impeller.cc(104)] Using the Impeller rendering backend (OpenGLES).
+D/libMEOW (  776): applied 0 plugin for [com.example.audio_stream_poc].
+I/flutter (  776): Foreground Task Log: Starting Mobile Mic mode...
+I/flutter (  776): Foreground Task Log: Error: No microphone permission in background task

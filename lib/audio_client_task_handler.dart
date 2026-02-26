@@ -4,8 +4,8 @@ import 'dart:isolate';
 
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:flutter_pcm_sound/flutter_pcm_sound.dart';
+import 'package:record/record.dart';
 
-// The callback function that is executed in the background.
 @pragma('vm:entry-point')
 void startCallback() {
   FlutterForegroundTask.setTaskHandler(AudioClientTaskHandler());
@@ -13,75 +13,132 @@ void startCallback() {
 
 class AudioClientTaskHandler extends TaskHandler {
   RawDatagramSocket? _socket;
-  final int _port = 4444; // Port to listen on
+  final int _port = 4444; 
+  final int _micPort = 4445; 
+  AudioRecorder? _recorder; 
+  StreamSubscription? _recorderSubscription;
 
-  // Called when the task is started.
   @override
   Future<void> onStart(DateTime timestamp, SendPort? sendPort) async {
-    print('Foreground task onStart called.'); // Debug log
 
-    int bufferSize = 8000; // Default buffer size
-    final dynamic receivedData = await FlutterForegroundTask.getData(
-      key: '',
-    ); // Get data set by setData
-    print('Received data from foreground task: $receivedData'); // Debug log
+    int bufferSize = 8000;
+    bool mobileMicMode = false;
+    String serverIP = "";
 
-    if (receivedData is Map && receivedData.containsKey('bufferSize')) {
-      final int? parsedBufferSize = receivedData['bufferSize'] as int?;
+    final dynamic receivedData = await FlutterForegroundTask.getData(key: 'bufferSize');
+    if (receivedData is int) {
+      bufferSize = receivedData;
+    }
 
-      if (parsedBufferSize != null) {
-        bufferSize = parsedBufferSize;
+    final dynamic micModeData = await FlutterForegroundTask.getData(key: 'mobileMicMode');
+    if (micModeData is bool) {
+      mobileMicMode = micModeData;
+    }
+
+    final dynamic ipData = await FlutterForegroundTask.getData(key: 'serverIP');
+    if (ipData is String) {
+      serverIP = ipData;
+    }
+
+    if (mobileMicMode) {
+      sendPort?.send('Starting Mobile Mic mode...');
+      _recorder = AudioRecorder();
+      
+      try {
+        // hasPermission() can sometimes return false in background isolates
+        // even if granted. We rely on the UI isolate check but keep this for safety.
+        final hasPerm = await _recorder!.hasPermission();
+        sendPort?.send('Background permission check: $hasPerm');
+        
+        if (!hasPerm) {
+          sendPort?.send('Warning: hasPermission() returned false. Attempting to start anyway...');
+        }
+      } catch (e) {
+        sendPort?.send('Error checking permission: $e');
+      }
+
+      try {
+        _socket = await RawDatagramSocket.bind(InternetAddress.anyIPv4, 0);
+        sendPort?.send('UDP Socket bound to port ${_socket!.port}');
+      } catch (e) {
+        sendPort?.send('Error binding UDP socket: $e');
+        return;
+      }
+      
+      try {
+        final recordStream = await _recorder!.startStream(const RecordConfig(
+          encoder: AudioEncoder.pcm16bits,
+          sampleRate: 44100,
+          numChannels: 1,
+        ));
+
+        final destination = InternetAddress(serverIP);
+        sendPort?.send('Recording started, sending to ${destination.address}:$_micPort');
+        
+        int packetCount = 0;
+        _recorderSubscription = recordStream.listen((data) {
+          _socket?.send(data, destination, _micPort);
+          packetCount++;
+          if (packetCount % 100 == 0) {
+            sendPort?.send('Sent $packetCount packets');
+          }
+        }, onError: (error) {
+          sendPort?.send('Recorder stream error: $error');
+        }, onDone: () {
+          sendPort?.send('Recorder stream done');
+        });
+      } catch (e) {
+        sendPort?.send('Error starting record stream: $e');
+      }
+
+    } else {
+      try {
+        await FlutterPcmSound.setup(sampleRate: 44100, channelCount: 1);
+        await FlutterPcmSound.setFeedThreshold(bufferSize);
+        FlutterPcmSound.play();
+
+        _socket = await RawDatagramSocket.bind(InternetAddress.anyIPv4, _port);
+        _socket!.listen((event) {
+          if (event == RawSocketEvent.read) {
+            final Datagram? dg = _socket!.receive();
+            if (dg != null) {
+              FlutterPcmSound.feed(
+                PcmArrayInt16(bytes: dg.data.buffer.asByteData()),
+              );
+            }
+          }
+        });
+
+        sendPort?.send(
+          'Client started, listening on port $_port with buffer size $bufferSize',
+        );
+      } catch (e) {
+        sendPort?.send('Error starting client mode: $e');
       }
     }
-    print('Determined bufferSize: $bufferSize'); // Debug log
-
-    // Initialize audio playback
-    await FlutterPcmSound.setup(sampleRate: 44100, channelCount: 1);
-    await FlutterPcmSound.setFeedThreshold(bufferSize);
-    FlutterPcmSound.play();
-    print(
-      'FlutterPcmSound.setFeedThreshold called with: $bufferSize',
-    ); // Debug log
-
-    // Bind UDP socket
-    _socket = await RawDatagramSocket.bind(InternetAddress.anyIPv4, _port);
-    _socket!.listen((event) {
-      if (event == RawSocketEvent.read) {
-        final Datagram? dg = _socket!.receive();
-        if (dg != null) {
-          FlutterPcmSound.feed(
-            PcmArrayInt16(bytes: dg.data.buffer.asByteData()),
-          );
-        }
-      }
-    });
-
-    // Optionally send initial status to UI
-    sendPort?.send(
-      'Client started, listening on port $_port with buffer size $bufferSize',
-    );
   }
 
-  // Called when a new data is received from the main isolate.
+  @override
   void onData(DateTime timestamp, dynamic data) {
-    // You can use the `data` to update the foreground task.
-    // For example, if you send an IP address from the UI, you could update the remoteIP here.
   }
 
-  // Called when the task is interrupted.
   @override
   Future<void> onEvent(DateTime timestamp, SendPort? sendPort) async {
-    // Added SendPort? sendPort
-    // You can use the `data` to update the foreground task.
   }
 
-  // Called when the task is terminated.
   @override
   Future<void> onDestroy(DateTime timestamp, SendPort? sendPort) async {
-    // You can use the `sendPort` to send data to the main isolate.
-    // sendPort?.send('onDestroy');
-
+    await _recorderSubscription?.cancel();
     _socket?.close();
+    if (_recorder != null) {
+      try {
+        await _recorder!.stop();
+        _recorder!.dispose();
+      } catch (e) {
+        sendPort?.send('Error stopping recorder: $e');
+      }
+    }
     FlutterPcmSound.stop();
+    sendPort?.send('Task destroyed');
   }
 }
