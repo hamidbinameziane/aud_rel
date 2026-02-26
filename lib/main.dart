@@ -58,6 +58,7 @@ class AudioRelayClone extends StatefulWidget {
 
 class _AudioRelayCloneState extends State<AudioRelayClone> {
   final _ipController = TextEditingController();
+  final _bufferSizeController = TextEditingController(); // Added
   RawDatagramSocket? _socket; // This is only for the server now
   Process? _audioProcess;
 
@@ -70,6 +71,7 @@ class _AudioRelayCloneState extends State<AudioRelayClone> {
   void initState() {
     super.initState();
     _ipController.text = "192.168.100.103"; // Default IP
+    _bufferSizeController.text = "8000"; // Default buffer size Added
     if (Platform.isAndroid) {
       _initForegroundTask(); // Initialize foreground task communication
     }
@@ -128,11 +130,17 @@ class _AudioRelayCloneState extends State<AudioRelayClone> {
 
     // Start foreground service only on Android
     if (Platform.isAndroid) {
+      final int bufferSize = int.tryParse(_bufferSizeController.text) ?? 8000;
+
       final startResult = await FlutterForegroundTask.startService(
         notificationTitle: 'Audio Stream Client',
         notificationText: 'Receiving audio...',
         callback: startCallback,
+        // arguments are no longer passed here directly
       );
+      
+      // Pass buffer size to the task handler via the callback or shared storage
+      // You can update AudioClientTaskHandler to read bufferSize from shared preferences
 
       if (startResult) {
         setState(() {
@@ -199,6 +207,19 @@ class _AudioRelayCloneState extends State<AudioRelayClone> {
                 textAlign: TextAlign.center,
               ),
             ),
+            const SizedBox(height: 10), // Added SizedBox
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 32.0),
+              child: TextField(
+                controller: _bufferSizeController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: "Taille du buffer (ex: 8000)",
+                  border: OutlineInputBorder(),
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
             const SizedBox(height: 20),
             ElevatedButton.icon(
               onPressed: _startServer,
@@ -236,6 +257,7 @@ class _AudioRelayCloneState extends State<AudioRelayClone> {
   @override
   void dispose() {
     _ipController.dispose();
+    _bufferSizeController.dispose(); // Added
     _receivePort?.close(); // Added
     _stopAll();
     super.dispose();

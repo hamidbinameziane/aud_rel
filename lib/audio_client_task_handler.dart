@@ -18,13 +18,30 @@ class AudioClientTaskHandler extends TaskHandler {
   // Called when the task is started.
   @override
   Future<void> onStart(DateTime timestamp, SendPort? sendPort) async {
-    // You can use the `sendPort` to send data to the main isolate.
-    // sendPort?.send('onStart');
+    print('Foreground task onStart called.'); // Debug log
+
+    int bufferSize = 8000; // Default buffer size
+    final dynamic receivedData = await FlutterForegroundTask.getData(
+      key: '',
+    ); // Get data set by setData
+    print('Received data from foreground task: $receivedData'); // Debug log
+
+    if (receivedData is Map && receivedData.containsKey('bufferSize')) {
+      final int? parsedBufferSize = receivedData['bufferSize'] as int?;
+
+      if (parsedBufferSize != null) {
+        bufferSize = parsedBufferSize;
+      }
+    }
+    print('Determined bufferSize: $bufferSize'); // Debug log
 
     // Initialize audio playback
     await FlutterPcmSound.setup(sampleRate: 44100, channelCount: 1);
-    await FlutterPcmSound.setFeedThreshold(8000);
+    await FlutterPcmSound.setFeedThreshold(bufferSize);
     FlutterPcmSound.play();
+    print(
+      'FlutterPcmSound.setFeedThreshold called with: $bufferSize',
+    ); // Debug log
 
     // Bind UDP socket
     _socket = await RawDatagramSocket.bind(InternetAddress.anyIPv4, _port);
@@ -40,7 +57,9 @@ class AudioClientTaskHandler extends TaskHandler {
     });
 
     // Optionally send initial status to UI
-    sendPort?.send('Client started, listening on port $_port');
+    sendPort?.send(
+      'Client started, listening on port $_port with buffer size $bufferSize',
+    );
   }
 
   // Called when a new data is received from the main isolate.
@@ -52,7 +71,8 @@ class AudioClientTaskHandler extends TaskHandler {
   // Called when the task is interrupted.
   @override
   Future<void> onEvent(DateTime timestamp, SendPort? sendPort) async {
-    // You can use the `sendPort` to send data to the main isolate.
+    // Added SendPort? sendPort
+    // You can use the `data` to update the foreground task.
   }
 
   // Called when the task is terminated.

@@ -1,0 +1,12 @@
+02-18 00:03:30.463 26058 26058 I flutter : [PCM] invoke: stop 
+02-18 00:03:30.884 26058 26058 W FlutterJNI: Tried to send a platform message to Flutter, but FlutterJNI was detached from native C++. Could not send. Channel: flutter_pcm_sound/methods. Response ID: 35
+02-18 00:03:30.885 26058 26058 W FlutterJNI: Tried to send a platform message to Flutter, but FlutterJNI was detached from native C++. Could not send. Channel: flutter_pcm_sound/methods. Response ID: 36
+02-18 00:04:35.944 26058 27356 I flutter : [IMPORTANT:flutter/shell/platform/android/android_context_gl_impeller.cc(104)] Using the Impeller rendering backend (OpenGLES).
+02-18 00:04:37.305 26058 26058 I flutter : Foreground task onStart called.
+02-18 00:04:37.305 26058 26058 I flutter : Received arguments in onStart: null
+02-18 00:04:37.309 26058 26058 I flutter : Determined bufferSize: 8000
+02-18 00:04:37.322 26058 26058 I flutter : [PCM] invoke: setup {sample_rate: 44100, num_channels: 1, ios_audio_category: playback}
+02-18 00:04:37.494 26058 26058 I flutter : [PCM] invoke: setFeedThreshold {feed_threshold: 8000}
+02-18 00:04:37.514 26058 26058 I flutter : [PCM] invoke: play 
+02-18 00:04:37.515 26058 26058 I flutter : FlutterPcmSound.setFeedThreshold called with: 8000
+02-18 00:04:37.625 26058 26058 I flutter : [PCM] invoke: feed (882 samples) [116, 0, 115, 0, 107, 0] ...
